@@ -8,14 +8,14 @@
   npm info "$PKG@latest" peerDependencies --json | command sed 's/[\{\},]//g ; s/: /@/g' | xargs npm install --save-dev "$PKG@latest"
 )
 ********************
-1. mongoDB(sn,,inj,,)
+1. mongoDB
 mlab.com /
 1) amazon / sandbox 0.5GB/ dbname: lyricaldb
 2. To connect using a driver via the standard MongoDB URI :
 mongodb://<dbuser>:<dbpassword>@ds259820.mlab.com:59820/lyricaldb
 - click database user/ Add new database user /
-db username : smarts
-db pd: smarts1
+db username : 
+db pd: 
 3. lyricaldb$ npm run dev
 4. npm run dev ==> error, but after reboot => compile success!!
  or $ sudo lsof -i :4000 then $ kill -9 <pid>
