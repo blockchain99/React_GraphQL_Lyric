@@ -1,0 +1,312 @@
+-git init
+-git clone https://github.com/StephenGrider/Lyrical-GraphQL.git
+- Lyrical-GraphQL$ npm install  (install all dependencies
+ ,can check in package.json incl lodash, react, nodemon...)
+* In linux, eslint-config-airbnb installed by following command.
+(
+  export PKG=eslint-config-airbnb;
+  npm info "$PKG@latest" peerDependencies --json | command sed 's/[\{\},]//g ; s/: /@/g' | xargs npm install --save-dev "$PKG@latest"
+)
+********************
+1. mongoDB(sn,,inj,,)
+mlab.com /
+1) amazon / sandbox 0.5GB/ dbname: lyricaldb
+2. To connect using a driver via the standard MongoDB URI :
+mongodb://<dbuser>:<dbpassword>@ds259820.mlab.com:59820/lyricaldb
+- click database user/ Add new database user /
+db username : smarts
+db pd: smarts1
+3. lyricaldb$ npm run dev
+4. npm run dev ==> error, but after reboot => compile success!!
+ or $ sudo lsof -i :4000 then $ kill -9 <pid>
+--> By the way check mogodb connection test ASF.
+~/graphqlReact$ nc -w 3 -v ds259820.mlab.com 59820
+  -> connection success!!
+$ mongo ds259820.mlab.com:59820/lyricaldb -u smarts -p smarts1
+--> connect success!
+5. http://localhost:4000/  => output "Lyrical"
+http://localhost:4000/graphql
+6. automatic document generation in GraphiQL
+1)
+mutation {
+  addSong(title: "Cold Night") {
+    id //auto generation, GUID
+  }
+}
+==>
+{
+  "data": {
+    "addSong": {
+      "id": "5b22df98e1b4430ddfa3b51d"
+    }
+  }
+}
+-------------------------------
+2)
+mutation {
+  addLyricToSong(songId: "5b22df98e1b4430ddfa3b51d", content: "Oh my oh my its a cold night"){
+    id
+    title
+    lyrics {
+      content
+    }
+  }
+}
+---------check song added ----
+{
+  songs {
+    id
+    title
+    lyrics {
+      content
+    }
+  }
+}
+==========================
+==> mlab/ Collections /
+*Apollo Provider : Glue layer(btwn react, Apollo world),
+Take data from  Apollo Store & inject to React App.
+most configuration happened here.
+*Apollo store : setup in index.js, point of contact with
+GraphQL server.
+7. Apollo Provider ( our React App )
+            |
+       Apollo Store - store data existed in client side application.
+            |
+      GraphQL Server
+8. client/ component
+   1) SongList
+   2) SongDetail / LyricList / LyricCreate
+9. SongList : get data from server
+***GraphQL + React Strategy
+1) Identify data required(song title only
+-don't over fetch over query)
+2) Write query in Graphiql(for practice) and in
+component file
+3) Bond query + components
+4) Access data ********
+10.
+1) Title of each song only ->localhost:4000/graphql
+{
+  songs {
+    title
+  }
+}
+2). write query in SongList.js
+const query =gql`
+ {
+   songs {
+     title
+   }
+ }
+ `;
+3).Bond query + components
+import { graphql } from 'react-apollo' in SongList.js
+....
+export default graphql(query)(SongList);
+4)
+
+11. Component Rendered -> Query Issued ------->
+    Query Completed -> Render Component
+12. localhost:4000/graphql  chrome tools/ console
+==> check 2nd Object / fetchMore/ loading ,
+    songs: Array(1) / ...<--- after query executed
+    "songs" shows..
+13. Error: Uncaught TypeError: Cannot read property 'map' of undefined
+=> At first, Nothing has come back to  graphql server yet. so
+this.props.data.songs is undefined at that time,
+==> 1st Object , loading : true,
+-> if (this.props.data.loading) { return <div>Loading..</div>;}
+===> warning ach child in an array or iterator
+should have a unique "key" prop -> id key needed
+---------------
+chrome>
+localhost:4000/#/songs/new => route to SongCreate.js
+**** whenever start the project,
+1) lyrical-GrpphQL$ npm run dev
+2) localhost:4000/graphql ****
+14. in SongCreate.js, onSubmit() {..}
+1) Test out mutation inside graphiQL
+  1-1)
+mutation {
+    addSong(title: "Cat Call") {
+        id
+        title
+    }
+  }
+  - query variables : inject some variables from outside
+  of query into the query.-> mutation,
+  1-2)
+mutation AddSong($title: String) {
+  addSong(title: $title) {
+    id
+    title
+  }
+}
+==> mLab, if crate song without title, just delete
+in QUERY VARIABLES,
+{
+  "title": "Humanizing Technology"
+}
+2) define mutation in SongCreate.js
+ mutation AddSong($title: String) {
+   addSong(title: $title){
+     title
+   }
+ }
+ //name of mutation: AddSong,
+ //name of parameter: $title with type String
+ // second $title : where to get this value from.
+3) combine mutation and component together using
+graphql helper of 'react-apollo' library.
+
+15. localhost:4000/#/songs/new
+16. after clicking create new song, back to song list page.
+17. after create new song title,automatically navigate song list
+but not refreshed to reflect new song to appear,
+manual refreshing needed.
+==>sol: cold cache vs warm cache(Apollo:
+fetch only executed 1 time)
+18. const query = gql`....` in separate file and import it in
+SongList.js, SongCreate.js.
+19. delete song: graphiQL
+mutation DeleteSong($id: ID){
+  deleteSong(id: $id){
+    id
+  }
+}
+---QUERY variables
+{
+  "id": "5b24016d982c405c57588908"
+}
+20. SongList.js -> not automatic delete on webbrowser.
+==> need auto refreshing.
+onSongDelete(id) { this.props.mutate({ variables: { id }})
+  .then(() => this.props.data.refetch());
+  //this.props.data is added to component automatically by graphql tag
+  // apollo library.
+  //Refetch query data(fetchSong query) associated with SongList component
+}
+** whereas, in SongCreate.js
+refetchQueries: [{ query }] --> not associated with SongCreate component.
+21. song detail page : SongDetail / LyricList / LyricCreate
+22. localhost:4000/#/songs/1
+index.js, <Route path="songs/:id" component={SongDetail} />
+//As for props of SongDetail componet, wiid card of id .
+23 GraphiQL page:
+in Doc, song(id: ID!): SongType
+1){
+  songs {
+    id
+  }
+} //get id args from this query.
+2) named query
+query SongQuery($id: ID!) {
+  song(id: $id) {
+    id
+    title
+  }
+}
+---------------
+{
+  "id" : "5b23f714982c405c57588906"
+}
+----------------------
+24. localhost:4000/#/songs/1  in chrome console page
+to see console.log(this.props) in SongDetail page.
+* params object / id : "1"
+* instead of above id: "1", We'd like use real id.
+localhost:4000/#/songs/5b23f714982c405c57588906
+---> click to link different page not typing
+in real id number.==> react Navigation
+1) SongDetail to  SongList:  <Link to="/">
+2) SongList to SongDetail: <Link to={`/songs/${id}`}>
+25. add lyric to the song.(LyricCreate.js)
+constructor(props) {
+  super(props);
+  this.state = {  content: '' };
+}
+<input
+  value={this.state.content}
+  onChange={event => this.setState( {content: event.target.value })}
+/>
+------------------
+onSubmit(event) { event.preventDefault(); }
+<form onSubmit={this.onSubmit.bind(this)}> ..
+--> mutation
+26. in graphiQL
+{p
+  songs {
+    id
+  }
+} ==> "id":"5b23f714982c405c57588906" ....
+*QUERY VARIABLES =>
+{
+"songId": "5b23f714982c405c57588906",
+"content": "Kitty goes round and round"
+}
+------------
+mutation AddLyricToSong($content: String, $songId:ID) {
+	addLyricToSong(content: $content, songId: $songId) {
+    id
+    lyrics {
+      content
+    }
+  }
+}
+-------------
+-localhost:4000/#/songs/5b23f714982c405c57588906
+-Network/ XHR / Header / Request Payload / Variables
+for check whether properly requested!
+27. LyricList : child of SongDetail
+1)
+in graphiQL , copy it to GraphiQL windows.
+query SongQuery($id: ID!) {
+ song(id: $id) {
+   id
+   title
+ }
+}
+-----
+{
+  "id": "5b23f714982c405c57588906"
+}
+===========================
+query SongQuery($id: ID!) {
+ song(id: $id) {
+   id
+   title
+   lyrics {
+    id
+    content
+  }
+ }
+}
+-------------
+{
+  "id": "5b23f714982c405c57588906"
+}
+2) in fetchSong.js cut above song(id:..).. & paste
+28. We need new lyric appear in Song Create page
+ after Add a Lyric ____ performed.
+But in reality, after refresh, it appears
+==> Option 1: refetchQueries: [{ query }] in SongCreate.js
+We use option 2(caching, data object system),--->
+only a single request is needed to update data,
+whereas optoin1 refetch all of the data.
+cf: http://dev.apollodata.com/react/cache-updates.html
+29. likes : using id in lyrics.
+mutation LikeLyric($id: ID) {
+  likeLyric(id: $id) {
+    id
+    likes
+  }
+}
+-----------id in lyrics ---
+{
+  "id": "5b2857c2dd8f4c37efcee2b6"
+}
+============
+30. Initially, not fetch "likes". So, no likes on screen
+in fetchSong.js.
+31. Apollo : optimistic update
